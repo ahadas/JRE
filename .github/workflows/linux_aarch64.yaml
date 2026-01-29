@@ -1,0 +1,70 @@
+name: linux-aarch64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04-arm64
+    steps:
+      - name: Checkout JDK repository
+        uses: actions/checkout@v4
+        with:
+          repository: mucommander/jdk
+
+      - name: 'Get the BootJDK'
+        id: bootjdk
+        uses: mucommander/jdk/.github/actions/get-bootjdk@refs/heads/master
+        with:
+          platform: linux-aarch64
+
+      - name: 'Get JTReg'
+        id: jtreg
+        uses: mucommander/jdk/.github/actions/get-jtreg@refs/heads/master
+
+      # Upgrading apt to solve libc6 installation bugs, see JDK-8260460.
+      - name: 'Install toolchain and dependencies'
+        run: |
+          # Install dependencies using apt-get
+          if [[ '${{ inputs.apt-architecture }}' != '' ]]; then
+            sudo dpkg --add-architecture ${{ inputs.apt-architecture }}
+          fi
+          sudo apt-get update
+          sudo apt-get install --only-upgrade apt
+          sudo apt-get install gcc-10 g++-10 libxrandr-dev libxtst-dev libcups2-dev libasound2-dev
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10
+
+      - name: 'Configure'
+        run: >
+          bash configure
+          --with-conf-name=${{ inputs.platform }}
+          ${{ matrix.flags }}
+          --with-version-opt=${GITHUB_ACTOR}-${GITHUB_SHA}
+          --with-boot-jdk=${{ steps.bootjdk.outputs.path }}
+          --with-jtreg=${{ steps.jtreg.outputs.path }}
+          --with-gtest=${{ steps.gtest.outputs.path }}
+          --with-zlib=system
+          --with-jmod-compress=zip-1
+          ${{ inputs.extra-conf-options }} ${{ inputs.configure-arguments }} || (
+          echo "Dumping config.log:" &&
+          cat config.log &&
+          exit 1)
+
+      - name: Build JDK
+        uses: mucommander/jdk/.github/actions/do-build@refs/heads/master
+        with:
+          platform: linux-aarch64
+          make-target: images
+
+      - name: Adjust JRE
+        run: |
+          ./build/linux-aarch64-server-release/images/jdk/bin/jlink  --module-path ./build/linux-aarch64-server-release/images/jdk/jmods --add-modules java.base,java.desktop,java.logging,java.naming,java.transaction.xa,java.rmi,java.management,java.security.jgss,java.sql,jdk.crypto.ec,jdk.httpserver,java.compiler --output ./out/linux/ --no-header-files  --no-man-pages  --strip-debug  --compress=2
+          rm -rf ./out/linux/bin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: jdk_linux_aarch64
+          path: ./out/linux
+          retention-days: 1
+          if-no-files-found: error
