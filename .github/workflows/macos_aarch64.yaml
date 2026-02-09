@@ -16,7 +16,7 @@ jobs:
 
       - name: Adjust JRE
         run: |
-          $JAVA_HOME_25/Contents/Home/bin/jlink  --module-path $JAVA_HOME_25/Contents/Home/jmods --add-modules java.base,java.desktop,java.logging,java.naming,java.transaction.xa,java.rmi,java.management,java.security.jgss,java.sql,jdk.crypto.ec,jdk.httpserver,java.compiler --output ./macOS/aarch64/ --no-header-files  --no-man-pages  --strip-debug  --compress=2
+          $JAVA_HOME_25_arm64/bin/jlink  --module-path $JAVA_HOME_25_arm64/jmods --add-modules java.base,java.desktop,java.logging,java.naming,java.transaction.xa,java.rmi,java.management,java.security.jgss,java.sql,jdk.crypto.ec,jdk.httpserver,java.compiler --output ./macOS/aarch64/ --no-header-files  --no-man-pages  --strip-debug  --compress=2
           rm -rf ./macOS/aarch64/bin
 
       - name: Create Pull Request
