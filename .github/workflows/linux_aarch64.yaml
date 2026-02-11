@@ -1,4 +1,4 @@
-name: linux-aarch64
+name: Linux/aarch64
 
 on:
   workflow_dispatch:
